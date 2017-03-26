@@ -1,2 +1,2 @@
 # arduino-rtc-relay
-RTC Drive Relay Controller for Arduino
+RTC Driven Relay Controller for Arduino
