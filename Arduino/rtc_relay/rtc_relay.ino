@@ -4,8 +4,9 @@
 #include <SerLCD.h>
 
 
+// pins are for mega ADK for testing
 #define PIN_LED (13)
-#define PIN_SQW (4)
+#define PIN_SQW (18)
 #define PIN_LCD_TX (2)
 #define PIN_LCD_RX (3)
 #define PIN_R0 (6)
@@ -20,6 +21,9 @@
 #define RELAY0 (0)
 #define RELAY1 (1)
 #define RELAY_COUNT (2)
+
+#define HOUR_ALL_OFF (253)
+#define HOUR_ALL_ON (254)
 
 
 typedef struct
@@ -39,8 +43,8 @@ static const relay_schedule_s RELAY_SCHEDULES[RELAY_COUNT] =
     },
     {
         .pin = PIN_R1,
-        .hour_on = 1,
-        .hour_off = 15  
+        .hour_on = HOUR_ALL_ON,
+        .hour_off = HOUR_ALL_ON  
     }
 };
 
@@ -127,7 +131,23 @@ static bool relay_schedule_get(
 {
     bool enabled = false;
 
-    if( time_hour >= RELAY_SCHEDULES[relay].hour_on )
+    if( RELAY_SCHEDULES[relay].hour_on == HOUR_ALL_OFF )
+    {
+        enabled = false;
+    }
+    else if( RELAY_SCHEDULES[relay].hour_off == HOUR_ALL_OFF )
+    {
+        enabled = false;
+    }
+    else if( RELAY_SCHEDULES[relay].hour_on == HOUR_ALL_ON )
+    {
+        enabled = true;
+    }
+    else if( RELAY_SCHEDULES[relay].hour_off == HOUR_ALL_ON )
+    {
+        enabled = true;
+    }
+    else if( time_hour >= RELAY_SCHEDULES[relay].hour_on )
     {
         if( time_hour < RELAY_SCHEDULES[relay].hour_off )
         {
@@ -149,6 +169,13 @@ static void relays_update(
     {
         relay_set( idx, relay_schedule_get( idx, time_hour ) );
     }
+}
+
+
+static void sqw_interrupt_handler(
+        void )
+{
+    led_update();
 }
 
 
@@ -212,7 +239,7 @@ void setup( void )
 {
     pinMode( PIN_SQW, INPUT_PULLUP );
     pinMode( PIN_LED, OUTPUT );
-
+    
     relays_config();
     relays_set( true );
 
@@ -241,13 +268,16 @@ void setup( void )
     LCD.clear();
 
     led_update();
+
+    attachInterrupt(
+            digitalPinToInterrupt(PIN_SQW),
+            sqw_interrupt_handler,
+            CHANGE );
 }
 
 
 void loop( void )
-{
-    led_update();
-    
+{    
     rtc.update();
     
     const uint8_t time_minute = rtc.minute();
@@ -259,8 +289,6 @@ void loop( void )
     }
 
     last_minute = time_minute;
-
-    led_update();
 
     delay( LOOP_DELAY );
 }
