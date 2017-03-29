@@ -6,9 +6,9 @@
 
 // pins are for mega ADK for testing
 #define PIN_LED (13)
-#define PIN_SQW (18)
+#define PIN_SQW (3)
 #define PIN_LCD_TX (2)
-#define PIN_LCD_RX (3)
+#define PIN_LCD_RX (8)
 #define PIN_R0 (6)
 #define PIN_R1 (7)
 
