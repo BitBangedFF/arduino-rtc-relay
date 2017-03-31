@@ -4,7 +4,6 @@
 #include <SerLCD.h>
 
 
-// pins are for mega ADK for testing
 #define PIN_LED (13)
 #define PIN_SQW (3)
 #define PIN_LCD_TX (2)
@@ -24,6 +23,8 @@
 
 #define HOUR_ALL_OFF (253)
 #define HOUR_ALL_ON (254)
+
+#define RTC_ERROR_MINUTE (165)
 
 
 typedef struct
@@ -241,28 +242,25 @@ void setup( void )
     pinMode( PIN_LED, OUTPUT );
     
     relays_config();
-    relays_set( true );
+    relays_set( false );
 
     led_set( true );
 
     lcd_config();
+    LCD.setPosition( 1, 0 );
     LCD.print( "startup delay" );
 
     delay( STARTUP_DELAY );
-
-    // TODO - should they be kept on for a short period to prevent
-    // a quick transition on multiple resets?
-
-    relays_set( false );
         
     rtc_config();
 
-    while( rtc.update() == false )
+    //while( rtc.update() == false )
+    while( rtc.getMinute() == RTC_ERROR_MINUTE )
     {
         led_set( false );
         LCD.clear();
         LCD.print( "waiting for RTC" );
-        delay( LOOP_DELAY );
+        delay( STARTUP_DELAY );
     }
 
     LCD.clear();
@@ -270,7 +268,7 @@ void setup( void )
     led_update();
 
     attachInterrupt(
-            digitalPinToInterrupt(PIN_SQW),
+            digitalPinToInterrupt(3),
             sqw_interrupt_handler,
             CHANGE );
 }
