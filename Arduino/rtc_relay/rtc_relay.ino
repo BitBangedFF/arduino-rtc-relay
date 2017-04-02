@@ -25,6 +25,7 @@
 #define HOUR_ALL_ON (254)
 
 #define RTC_ERROR_MINUTE (165)
+#define RTC_ERROR_YEAR (0)
 
 
 typedef struct
@@ -61,6 +62,24 @@ static void rtc_config(
     rtc.begin();
     rtc.set24Hour( true );
     rtc.writeSQW( SQW_SQUARE_1 );
+}
+
+
+static bool rtc_check(
+        void )
+{
+    bool check_pass = true;
+
+    if( rtc.getMinute() == RTC_ERROR_MINUTE )
+    {
+        check_pass = false;
+    }
+    else if( rtc.getYear() == RTC_ERROR_YEAR )
+    {
+        check_pass = false;
+    }
+
+    return check_pass;
 }
 
 
@@ -254,8 +273,7 @@ void setup( void )
         
     rtc_config();
 
-    //while( rtc.update() == false )
-    while( rtc.getMinute() == RTC_ERROR_MINUTE )
+    while( rtc_check() == false )
     {
         led_set( false );
         LCD.clear();
