@@ -48,14 +48,16 @@ typedef struct
 static const relay_schedule_s RELAY_SCHEDULES[RELAY_COUNT] =
 {
     {
+        // 7 am to 7 pm
         .pin = PIN_R0,
         .hour_on = 7,
         .hour_off = 19
     },
     {
+        // 5 pm to 9 am
         .pin = PIN_R1,
-        .hour_on = HOUR_ALL_OFF,
-        .hour_off = HOUR_ALL_OFF
+        .hour_on = 17,
+        .hour_off = 9
     }
 };
 
@@ -170,11 +172,29 @@ static bool relay_schedule_get(
     {
         enabled = true;
     }
-    else if(time_hour >= RELAY_SCHEDULES[relay].hour_on)
+    else
     {
-        if(time_hour < RELAY_SCHEDULES[relay].hour_off)
+        if(RELAY_SCHEDULES[relay].hour_on <= RELAY_SCHEDULES[relay].hour_off)
         {
-            enabled = true;
+            if(time_hour >= RELAY_SCHEDULES[relay].hour_on)
+            {
+                if(time_hour < RELAY_SCHEDULES[relay].hour_off)
+                {
+                    enabled = true;
+                }
+            }
+        }
+        else
+        {
+            // wraps over to next day
+            if(time_hour < RELAY_SCHEDULES[relay].hour_off)
+            {
+                enabled = true;
+            }
+            else if(time_hour >= RELAY_SCHEDULES[relay].hour_on)
+            {
+                enabled = true;
+            }
         }
     }
 
