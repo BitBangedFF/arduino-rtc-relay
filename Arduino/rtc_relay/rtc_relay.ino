@@ -1,3 +1,12 @@
+/**
+ * @file rtc_relay.ino
+ * @brief RTC Relay.
+ *
+ * Board: 5v Nano
+ *
+ */
+
+
 #include <SparkFunDS1307RTC.h>
 #include <Wire.h>
 #include <SoftwareSerial.h>
@@ -40,41 +49,40 @@ static const relay_schedule_s RELAY_SCHEDULES[RELAY_COUNT] =
 {
     {
         .pin = PIN_R0,
-        .hour_on = 8,
+        .hour_on = 7,
         .hour_off = 19
     },
     {
         .pin = PIN_R1,
-        .hour_on = HOUR_ALL_ON,
-        .hour_off = HOUR_ALL_ON  
+        .hour_on = HOUR_ALL_OFF,
+        .hour_off = HOUR_ALL_OFF  
     }
 };
 
+
 static uint8_t last_minute = 0;
+static SoftwareSerial SERIAL_LCD(PIN_LCD_RX, PIN_LCD_TX);
+static SerLCD LCD(SERIAL_LCD);
 
-SoftwareSerial SERIAL_LCD( PIN_LCD_RX, PIN_LCD_TX );
-SerLCD LCD( SERIAL_LCD );
 
-
-static void rtc_config(
-        void )
+static void rtc_config(void)
 {
     rtc.begin();
-    rtc.set24Hour( true );
-    rtc.writeSQW( SQW_SQUARE_1 );
+    rtc.enable();
+    rtc.set24Hour(true);
+    rtc.writeSQW(SQW_SQUARE_1);
 }
 
 
-static bool rtc_check(
-        void )
+static bool rtc_check(void)
 {
     bool check_pass = true;
 
-    if( rtc.getMinute() == RTC_ERROR_MINUTE )
+    if(rtc.getMinute() == RTC_ERROR_MINUTE)
     {
         check_pass = false;
     }
-    else if( rtc.getYear() == RTC_ERROR_YEAR )
+    else if(rtc.getYear() == RTC_ERROR_YEAR)
     {
         check_pass = false;
     }
@@ -83,93 +91,89 @@ static bool rtc_check(
 }
 
 
-static void lcd_config(
-        void )
+static void lcd_config(void)
 {
-    SERIAL_LCD.begin( LCD_RATE );
+    SERIAL_LCD.begin(LCD_RATE);
     LCD.begin();    
     LCD.clear();
     LCD.displayOn();
-    LCD.setBacklight( LCD_BACKLIGHT );
+    LCD.setBacklight(LCD_BACKLIGHT);
 }
 
 
-static void relays_config(
-        void )
+static void relays_config(void)
 {
     uint8_t idx;
-    for( idx = 0; idx < RELAY_COUNT; idx += 1 )
+    for(idx = 0; idx < RELAY_COUNT; idx += 1)
     {
-        pinMode( RELAY_SCHEDULES[idx].pin, OUTPUT );
+        pinMode(RELAY_SCHEDULES[idx].pin, OUTPUT);
     }
 }
 
 
-static bool sqw_get(
-        void )
+static bool sqw_get(void)
 {
-    return (bool) digitalRead( PIN_SQW );
+    return (bool) digitalRead(PIN_SQW);
 }
 
 
 static void led_set(
-        const bool state )
+        const bool state)
 {
-    digitalWrite( PIN_LED, state );
+    digitalWrite(PIN_LED, state);
 }
 
 
-static void led_update(
-        void )
+static void led_update(void)
 {
-    led_set( sqw_get() );
+    led_set(sqw_get());
 }
 
 
 static void relay_set(
         const uint8_t relay,
-        const bool state )
+        const bool state)
 {
-    digitalWrite( RELAY_SCHEDULES[relay].pin, !state );
+    digitalWrite(RELAY_SCHEDULES[relay].pin, !state);
 }
 
 
 static void relays_set(
-        const bool state )
+        const bool state)
 {
     uint8_t idx;
-    for( idx = 0; idx < RELAY_COUNT; idx += 1 )
+    for(idx = 0; idx < RELAY_COUNT; idx += 1)
     {
-        digitalWrite( RELAY_SCHEDULES[idx].pin, !state );
+        digitalWrite(RELAY_SCHEDULES[idx].pin, !state);
     }
 }
 
 
 static bool relay_schedule_get(
         const uint8_t relay,
-        const uint8_t time_hour )
+        const uint8_t time_hour)
 {
     bool enabled = false;
 
-    if( RELAY_SCHEDULES[relay].hour_on == HOUR_ALL_OFF )
+    if(RELAY_SCHEDULES[relay].hour_on == HOUR_ALL_OFF)
     {
         enabled = false;
     }
-    else if( RELAY_SCHEDULES[relay].hour_off == HOUR_ALL_OFF )
+    else if(RELAY_SCHEDULES[relay].hour_off == HOUR_ALL_OFF)
     {
         enabled = false;
     }
-    else if( RELAY_SCHEDULES[relay].hour_on == HOUR_ALL_ON )
+    else if(RELAY_SCHEDULES[relay].hour_on == HOUR_ALL_ON)
     {
         enabled = true;
     }
-    else if( RELAY_SCHEDULES[relay].hour_off == HOUR_ALL_ON )
+    else if(RELAY_SCHEDULES[relay].hour_off == HOUR_ALL_ON)
     {
         enabled = true;
     }
-    else if( time_hour >= RELAY_SCHEDULES[relay].hour_on )
+    else if(time_hour >= RELAY_SCHEDULES[relay].hour_on)
     {
-        if( time_hour < RELAY_SCHEDULES[relay].hour_off )
+        if(time_hour < RELAY_SCHEDULES[relay].hour_off)
         {
             enabled = true;
         }
@@ -179,62 +183,59 @@ static bool relay_schedule_get(
 }
 
 
-static void relays_update(
-        void )
+static void relays_update(void)
 {
     const uint8_t time_hour = rtc.hour();
 
     uint8_t idx;
-    for( idx = 0; idx < RELAY_COUNT; idx += 1 )
+    for(idx = 0; idx < RELAY_COUNT; idx += 1)
     {
-        relay_set( idx, relay_schedule_get( idx, time_hour ) );
+        relay_set(idx, relay_schedule_get(idx, time_hour));
     }
 }
 
 
-static void sqw_interrupt_handler(
-        void )
+static void sqw_interrupt_handler(void)
 {
     led_update();
 }
 
 
-static void lcd_update(
-        void )
+static void lcd_update(void)
 {
     const uint8_t time_hour = rtc.hour();
 
     LCD.clear();
-    LCD.setPosition( 1, 0 );
-    LCD.print( "R0: " );
-    LCD.setPosition( 1, 4 );
-    if( relay_schedule_get( RELAY0, time_hour ) == true )
+    LCD.setPosition(1, 0);
+    LCD.print("R1: ");
+    LCD.setPosition(1, 4);
+    if(relay_schedule_get(RELAY0, time_hour) == true)
     {
-        LCD.print( "ON" );
+        LCD.print("ON");
     }
     else
     {
-        LCD.print( "OFF" );
+        LCD.print("OFF");
     }
-    LCD.setPosition( 1, 9 );
-    LCD.print( "R1: " );
-    LCD.setPosition( 1, 13 );
-    if( relay_schedule_get( RELAY1, time_hour ) == true )
+    LCD.setPosition(1, 9);
+    LCD.print("R2: ");
+    LCD.setPosition(1, 13);
+    if(relay_schedule_get(RELAY1, time_hour) == true)
     {
-        LCD.print( "ON" );
+        LCD.print("ON");
     }
     else
     {
-        LCD.print( "OFF" );
+        LCD.print("OFF");
     }
-    LCD.setPosition( 2, 0 );
-    if( rtc.minute() < 10 )
+    LCD.setPosition(2, 0);
+    if(rtc.minute() < 10)
     {
         const String time_str =
                 (String(rtc.hour()) +
                 ":0" +
                 String(rtc.minute()));
-        LCD.print( time_str );
+        LCD.print(time_str);
     }
     else
     {
@@ -242,43 +243,43 @@ static void lcd_update(
                 (String(rtc.hour()) +
                 ":" +
                 String(rtc.minute()));
-        LCD.print( time_str );
+        LCD.print(time_str);
     }    
-    LCD.setPosition( 2, 8 );
+    LCD.setPosition(2, 8);
     const String date_str =
             (String(rtc.month()) +
             "/" +
             String(rtc.date()) +
             "/" +
             String(rtc.year()));
-    LCD.print( date_str );
+    LCD.print(date_str);
 }
 
 
-void setup( void )
+void setup(void)
 {
-    pinMode( PIN_SQW, INPUT_PULLUP );
-    pinMode( PIN_LED, OUTPUT );
+    pinMode(PIN_SQW, INPUT_PULLUP);
+    pinMode(PIN_LED, OUTPUT);
     
     relays_config();
-    relays_set( false );
+    relays_set(false);
 
-    led_set( true );
+    led_set(true);
 
     lcd_config();
-    LCD.setPosition( 1, 0 );
-    LCD.print( "startup delay" );
+    LCD.setPosition(1, 0);
+    LCD.print("startup delay");
 
-    delay( STARTUP_DELAY );
+    delay(STARTUP_DELAY);
         
     rtc_config();
 
-    while( rtc_check() == false )
+    while(rtc_check() == false)
     {
-        led_set( false );
+        led_set(false);
         LCD.clear();
-        LCD.print( "waiting for RTC" );
-        delay( STARTUP_DELAY );
+        LCD.print("waiting for RTC");
+        delay(STARTUP_DELAY);
     }
 
     LCD.clear();
@@ -288,17 +289,17 @@ void setup( void )
     attachInterrupt(
             digitalPinToInterrupt(3),
             sqw_interrupt_handler,
-            CHANGE );
+            CHANGE);
 }
 
 
-void loop( void )
+void loop(void)
 {    
     rtc.update();
     
     const uint8_t time_minute = rtc.minute();
 
-    if( time_minute != last_minute )
+    if(time_minute != last_minute)
     {
         relays_update();
         lcd_update();
@@ -306,5 +307,5 @@ void loop( void )
 
     last_minute = time_minute;
 
-    delay( LOOP_DELAY );
+    delay(LOOP_DELAY);
 }
