@@ -20,8 +20,8 @@
 #define PIN_R0 (6)
 #define PIN_R1 (7)
 
-#define LOOP_DELAY (200U)
-#define STARTUP_DELAY (2000U)
+#define LOOP_DELAY (1000UL)
+#define STARTUP_DELAY (2000UL)
 
 #define LCD_RATE (9600U)
 #define LCD_BACKLIGHT (157)
@@ -41,7 +41,7 @@ typedef struct
 {
     uint8_t pin;
     uint8_t hour_on;
-    uint8_t hour_off;    
+    uint8_t hour_off;
 } relay_schedule_s;
 
 
@@ -55,12 +55,11 @@ static const relay_schedule_s RELAY_SCHEDULES[RELAY_COUNT] =
     {
         .pin = PIN_R1,
         .hour_on = HOUR_ALL_OFF,
-        .hour_off = HOUR_ALL_OFF  
+        .hour_off = HOUR_ALL_OFF
     }
 };
 
 
-static uint8_t last_minute = 0;
 static SoftwareSerial SERIAL_LCD(PIN_LCD_RX, PIN_LCD_TX);
 static SerLCD LCD(SERIAL_LCD);
 
@@ -94,7 +93,7 @@ static bool rtc_check(void)
 static void lcd_config(void)
 {
     SERIAL_LCD.begin(LCD_RATE);
-    LCD.begin();    
+    LCD.begin();
     LCD.clear();
     LCD.displayOn();
     LCD.setBacklight(LCD_BACKLIGHT);
@@ -177,7 +176,7 @@ static bool relay_schedule_get(
         {
             enabled = true;
         }
-    }    
+    }
 
     return enabled;
 }
@@ -244,7 +243,7 @@ static void lcd_update(void)
                 ":" +
                 String(rtc.minute()));
         LCD.print(time_str);
-    }    
+    }
     LCD.setPosition(2, 8);
     const String date_str =
             (String(rtc.month()) +
@@ -260,7 +259,7 @@ void setup(void)
 {
     pinMode(PIN_SQW, INPUT_PULLUP);
     pinMode(PIN_LED, OUTPUT);
-    
+
     relays_config();
     relays_set(false);
 
@@ -271,7 +270,7 @@ void setup(void)
     LCD.print("startup delay");
 
     delay(STARTUP_DELAY);
-        
+
     rtc_config();
 
     while(rtc_check() == false)
@@ -294,9 +293,11 @@ void setup(void)
 
 
 void loop(void)
-{    
+{
+    static uint8_t last_minute = RTC_ERROR_MINUTE;
+
     rtc.update();
-    
+
     const uint8_t time_minute = rtc.minute();
 
     if(time_minute != last_minute)
