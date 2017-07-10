@@ -54,10 +54,10 @@ static const relay_schedule_s RELAY_SCHEDULES[RELAY_COUNT] =
         .hour_off = 19
     },
     {
-        // 5 pm to 9 am
+        // 4 pm to 10 am
         .pin = PIN_R1,
-        .hour_on = 17,
-        .hour_off = 9
+        .hour_on = 16,
+        .hour_off = 10
     }
 };
 
