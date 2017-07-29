@@ -2,11 +2,12 @@
  * @file rtc_relay.ino
  * @brief RTC Relay.
  *
- * Board: 5v Nano
+ * Board: 5v Nano with atmega328
  *
  */
 
 
+#include <avr/wdt.h>
 #include <SparkFunDS1307RTC.h>
 #include <Wire.h>
 #include <SoftwareSerial.h>
@@ -22,6 +23,7 @@
 
 #define LOOP_DELAY (1000UL)
 #define STARTUP_DELAY (2000UL)
+#define WATCHDOG_THRESHOLD (WDTO_4S)
 
 #define LCD_RATE (9600U)
 #define LCD_BACKLIGHT (157)
@@ -277,6 +279,10 @@ static void lcd_update(void)
 
 void setup(void)
 {
+    wdt_disable();
+    wdt_enable(WATCHDOG_THRESHOLD);
+    wdt_reset();
+
     pinMode(PIN_SQW, INPUT_PULLUP);
     pinMode(PIN_LED, OUTPUT);
 
@@ -289,7 +295,9 @@ void setup(void)
     LCD.setPosition(1, 0);
     LCD.print("startup delay");
 
+    wdt_reset();
     delay(STARTUP_DELAY);
+    wdt_reset();
 
     rtc_config();
 
@@ -301,6 +309,7 @@ void setup(void)
         delay(STARTUP_DELAY);
     }
 
+    wdt_reset();
     LCD.clear();
 
     led_update();
@@ -316,6 +325,7 @@ void loop(void)
 {
     static uint8_t last_minute = RTC_ERROR_MINUTE;
 
+    wdt_reset();
     rtc.update();
 
     const uint8_t time_minute = rtc.minute();
