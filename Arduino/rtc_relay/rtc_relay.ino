@@ -2,11 +2,12 @@
  * @file rtc_relay.ino
  * @brief RTC Relay.
  *
- * Board: 5v Nano
+ * Board: 5v Nano with atmega328
  *
  */
 
 
+#include <avr/wdt.h>
 #include <SparkFunDS1307RTC.h>
 #include <Wire.h>
 #include <SoftwareSerial.h>
@@ -22,6 +23,7 @@
 
 #define LOOP_DELAY (1000UL)
 #define STARTUP_DELAY (2000UL)
+#define WATCHDOG_THRESHOLD (WDTO_4S)
 
 #define LCD_RATE (9600U)
 #define LCD_BACKLIGHT (157)
@@ -48,14 +50,16 @@ typedef struct
 static const relay_schedule_s RELAY_SCHEDULES[RELAY_COUNT] =
 {
     {
+        // 7 am to 7 pm
         .pin = PIN_R0,
         .hour_on = 7,
         .hour_off = 19
     },
     {
+        // 4 pm to 10 am
         .pin = PIN_R1,
-        .hour_on = HOUR_ALL_OFF,
-        .hour_off = HOUR_ALL_OFF
+        .hour_on = 16,
+        .hour_off = 10
     }
 };
 
@@ -170,11 +174,29 @@ static bool relay_schedule_get(
     {
         enabled = true;
     }
-    else if(time_hour >= RELAY_SCHEDULES[relay].hour_on)
+    else
     {
-        if(time_hour < RELAY_SCHEDULES[relay].hour_off)
+        if(RELAY_SCHEDULES[relay].hour_on <= RELAY_SCHEDULES[relay].hour_off)
         {
-            enabled = true;
+            if(time_hour >= RELAY_SCHEDULES[relay].hour_on)
+            {
+                if(time_hour < RELAY_SCHEDULES[relay].hour_off)
+                {
+                    enabled = true;
+                }
+            }
+        }
+        else
+        {
+            // wraps over to next day
+            if(time_hour < RELAY_SCHEDULES[relay].hour_off)
+            {
+                enabled = true;
+            }
+            else if(time_hour >= RELAY_SCHEDULES[relay].hour_on)
+            {
+                enabled = true;
+            }
         }
     }
 
@@ -257,6 +279,10 @@ static void lcd_update(void)
 
 void setup(void)
 {
+    wdt_disable();
+    wdt_enable(WATCHDOG_THRESHOLD);
+    wdt_reset();
+
     pinMode(PIN_SQW, INPUT_PULLUP);
     pinMode(PIN_LED, OUTPUT);
 
@@ -269,7 +295,9 @@ void setup(void)
     LCD.setPosition(1, 0);
     LCD.print("startup delay");
 
+    wdt_reset();
     delay(STARTUP_DELAY);
+    wdt_reset();
 
     rtc_config();
 
@@ -281,6 +309,7 @@ void setup(void)
         delay(STARTUP_DELAY);
     }
 
+    wdt_reset();
     LCD.clear();
 
     led_update();
@@ -296,6 +325,7 @@ void loop(void)
 {
     static uint8_t last_minute = RTC_ERROR_MINUTE;
 
+    wdt_reset();
     rtc.update();
 
     const uint8_t time_minute = rtc.minute();
